@@ -10,10 +10,10 @@ read -s -p "Please enter a strong database password: " DATABASE_PASSWORD
 echo ""
 echo "DB Password: $DATABASE_PASSWORD"
 echo ""
-#read -s -p "Please set a password for your WP Admin " WP_PASSWORD
-#echo ""
-#echo "WP user password: $WP_PASSWORD"
-#echo ""
+read -s -p "Please set a password for your WP Admin " WP_PASSWORD
+echo ""
+echo "WP user password: $WP_PASSWORD"
+echo ""
 echo "I will take 5 - 10 minutes"
 
 
@@ -68,45 +68,57 @@ ufw allow 22;
 
 
 SQL_COMMAND_1="CREATE DATABASE wordpress DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
-SQL_COMMAND_2="CREATE USER 'wordpress'@'localhost' IDENTIFIED BY '${DATABASE_PASSWORD}';"
-SQL_COMMAND_3="GRANT ALL ON wordpress.* TO 'wordpress'@'localhost';"
-SQL_COMMAND_3="FLUSH PRIVILEGES;"
-
-mysql -u root << eof
+mysql << eof
 $SQL_COMMAND_1
 eof
-mysql -u root << eof
+
+SQL_COMMAND_2="CREATE USER 'wordpress'@'localhost' IDENTIFIED BY '${DATABASE_PASSWORD}';"
+mysql << eof
 $SQL_COMMAND_2
 eof
-mysql -u root << eof
+sleep 1s
+
+
+SQL_COMMAND_3="GRANT ALL ON wordpress.* TO 'wordpress'@'localhost';"
+mysql << eof
 $SQL_COMMAND_3
 eof
-mysql -u root << eof
+sleep 1s
+
+
+SQL_COMMAND_4="FLUSH PRIVILEGES;"
+mysql << eof
 $SQL_COMMAND_4
 eof
+sleep 1s
 
 mysql -u root wordpress < wordpress.sql
+sleep 5s
+
+SQL_COMMAND_5="USE wordpress; 
+UPDATE wordpress.wp_options t
+SET t.option_value = 'http://$URL'
+WHERE t.option_id = 1;
+UPDATE wordpress.wp_options t
+SET t.option_value = 'http://$URL'
+WHERE t.option_id = 2;
+UPDATE wordpress.wp_users t
+SET t.user_pass = MD5('${WP_PASSWORD}'),
+    t.user_url  = 'http://$URL'
+WHERE t.ID = 1;"
+
+sleep 1s
+mysql -u root << eof
+$SQL_COMMAND_5
+eof
+
 
 systemctl restart apache2
 
 
 echo "You can use PHPMyAdmin at: $URL/php"
 echo "DB Name: wordpress"
-echo "Database Password: $DATABASE_PASSWORD"
+echo "Database Password: ${DATABASE_PASSWORD}"
 echo "WP Username: adm_adm"
-echo "Reset your password in PHPMyAdmin and update home/site URLs"
+echo "adm_adm's password: $WP_PASSWORD"
 echo "You can login at: $URL/wp-admin"
-
-
-# SQL_COMMAND_6="UPDATE `wp_options` SET `option_value` = 'http://${URL}' WHERE `wp_options`.`option_id` = 1;"
-# SQL_COMMAND_7="UPDATE `wp_options` SET `option_value` = 'http://${URL}' WHERE `wp_options`.`option_id` = 2;"
-# SQL_COMMAND_8="UPDATE `wp_options` SET `option_value` = 'invalid@${URL}' WHERE `wp_options`.`option_id` = 6;"
-# SQL_COMMAND_9="UPDATE `wp_users` SET `user_pass` = MD5('${WP_PASSWORD}'), `user_email` = 'invalid@${URL}', `user_url` = 'http://${URL}' WHERE `wp_users`.`ID` = 1;"
-# SQL_COMMAND_10="FLUSH PRIVILEGES;"
-# SELECT * FROM `wp_options` WHERE 1
-# UPDATE `wp_options` SET `option_value` = 'http://${URL' WHERE `wp_options`.`option_id` = 1
-# UPDATE `wp_options` SET `option_value` = 'http://${URL' WHERE `wp_options`.`option_id` = 2;
-# SELECT * FROM `wp_users`
-# UPDATE `wp_users` SET `user_url` = 'http://${URL' WHERE `wp_users`.`ID` = 1
-# UPDATE `wp_users` SET `user_pass` = MD5('${WP_PASSWORD}') WHERE `wp_users`.`ID` = 1;
-
